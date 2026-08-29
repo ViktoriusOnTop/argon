@@ -55,7 +55,7 @@ async fn make_account(email: &String, body: &Value) -> anyhow::Result<String> {
         let client = reqwest::Client::new();
 
         MAIL_GW_LIMITER.until_ready().await;
-        let response_json: Value = client.post("https://api.mail.GW/accounts")
+        let response_json: Value = client.post("https://api.mail.gw/accounts")
             .json(&body)
             .send()
             .await?
@@ -77,7 +77,7 @@ async fn get_token(id: String, body: Value) -> anyhow::Result<String> {
         let client = reqwest::Client::new();
     
         MAIL_GW_LIMITER.until_ready().await;
-        let token_json: Value = client.post("https://api.mail.gw/accounts")
+        let token_json: Value = client.post("https://api.mail.gw/token")
             .json(&body)
             .send()
             .await?

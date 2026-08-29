@@ -77,7 +77,7 @@ async fn get_token(id: String, body: Value) -> anyhow::Result<String> {
         let client = reqwest::Client::new();
     
         MAIL_TM_LIMITER.until_ready().await;
-        let token_json: Value = client.post("https://api.mail.tm/accounts")
+        let token_json: Value = client.post("https://api.mail.tm/token")
             .json(&body)
             .send()
             .await?
