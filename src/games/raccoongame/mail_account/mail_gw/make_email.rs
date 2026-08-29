@@ -1,7 +1,7 @@
 use rand::distr::Alphanumeric;
 use rand::RngExt;
 use serde_json::{json, Value};
-use crate::games::raccoongame::limiter::MAIL_TM_LIMITER;
+use crate::games::raccoongame::limiter::MAIL_GW_LIMITER;
 
 pub async fn make_email() -> anyhow::Result<(String, String)> {
     let domain = get_domain().await?;
@@ -27,8 +27,8 @@ pub async fn make_email() -> anyhow::Result<(String, String)> {
 
 async fn get_domain() -> anyhow::Result<String> {
     for _ in 0..3{
-        MAIL_TM_LIMITER.until_ready().await;
-        let domain_json: Value = reqwest::get("https://api.mail.tm/domains")
+        MAIL_GW_LIMITER.until_ready().await;
+        let domain_json: Value = reqwest::get("https://api.mail.gw/domains")
             .await?
             .json()
             .await?;
@@ -54,8 +54,8 @@ async fn make_account(email: &String, body: &Value) -> anyhow::Result<String> {
     for _ in 0..3{
         let client = reqwest::Client::new();
 
-        MAIL_TM_LIMITER.until_ready().await;
-        let response_json: Value = client.post("https://api.mail.tm/accounts")
+        MAIL_GW_LIMITER.until_ready().await;
+        let response_json: Value = client.post("https://api.mail.GW/accounts")
             .json(&body)
             .send()
             .await?
@@ -76,8 +76,8 @@ async fn get_token(id: String, body: Value) -> anyhow::Result<String> {
     for _ in 0..3{
         let client = reqwest::Client::new();
     
-        MAIL_TM_LIMITER.until_ready().await;
-        let token_json: Value = client.post("https://api.mail.tm/accounts")
+        MAIL_GW_LIMITER.until_ready().await;
+        let token_json: Value = client.post("https://api.mail.gw/accounts")
             .json(&body)
             .send()
             .await?
