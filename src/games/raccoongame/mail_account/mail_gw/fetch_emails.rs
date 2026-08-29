@@ -1,16 +1,21 @@
 use serde_json::Value;
 use crate::games::raccoongame::limiter::MAIL_GW_LIMITER;
 
+use std::sync::LazyLock;
+use regex::Regex;
+
+static CAPTCHA_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"【(.*?)】").unwrap()
+});
+
 pub async fn fetch_captcha(token: String) -> anyhow::Result<String> {
     for _ in 0..3 {
         if let Ok(email) = fetch_email(token.clone()).await {
             if let Some(members) = email["hydra:member"].as_array() {
                 if !members.is_empty() {
                     if let Some(intro) = members[0]["intro"].as_str() {
-                        if let Ok(captcha) = extract_captcha(intro.to_string()) {
-                            if captcha.chars().count() == 6 {
-                                return Ok(captcha);
-                            }
+                        if let Ok(captcha) = extract_captcha(intro) {
+                            return Ok(captcha);
                         }
                     }
                 }
@@ -21,13 +26,13 @@ pub async fn fetch_captcha(token: String) -> anyhow::Result<String> {
     anyhow::bail!("Captcha fetch failed");
 }
 
-fn extract_captcha(message: String) -> anyhow::Result<String> {
-    if let Some((_, right)) = message.split_once('【') {
-        if let Some((code_uncomplete, _)) = right.split_once('】') {
-            return Ok(code_uncomplete.trim().to_string());
+fn extract_captcha(message: &str) -> anyhow::Result<String> {
+    if let Some(captures) = CAPTCHA_REGEX.captures(message) {
+        if let Some(matched_code) = captures.get(1) {
+            return Ok(matched_code.as_str().trim().to_string());
         }
     }
-    anyhow::bail!("Captcha markers not found in message")
+    anyhow::bail!("Captcha pattern matching failed")
 }
 
 async fn fetch_email(token: String) -> anyhow::Result<Value> {
