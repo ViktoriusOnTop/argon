@@ -3,14 +3,12 @@ use serde_json::Value;
 use crate::games::raccoongame::limiter::RACCOON_GAME_LIMITER;
 use crate::games::raccoongame::raccoon_account::full_account_builder::build;
 
-async fn yoit() -> anyhow::Result<Value>{
+pub async fn yoit() -> anyhow::Result<Value>{
     for _ in 0..3 {
         if let Ok(boosh) = build().await{
             let (token, sn) = boosh;
 
             let client = reqwest::Client::new();
-
-            let url = "https://www.raccoongame.com/game/gameList";
 
             let mut params = HashMap::new();
             params.insert("sn", sn.as_str());
@@ -30,7 +28,7 @@ async fn yoit() -> anyhow::Result<Value>{
 
             RACCOON_GAME_LIMITER.until_ready().await;
             if let Ok(response) = client
-                .post(url)
+                .post("https://www.raccoongame.com/game/gameList")
                 .header("accept", "*/*")
                 .header("accept-language", "en-US,en;q=0.9")
                 .header("origin", "https://www.raccoongame.com")
@@ -56,6 +54,7 @@ async fn yoit() -> anyhow::Result<Value>{
                 }
             }
         }
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     }
     anyhow::bail!("Yoiting games failed")
 }
