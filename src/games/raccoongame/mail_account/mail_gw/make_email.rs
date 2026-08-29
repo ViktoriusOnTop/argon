@@ -88,7 +88,9 @@ async fn get_token(id: String, body: Value) -> anyhow::Result<String> {
             .await?;
 
         if token_json["id"] == id{
-            return Ok(token_json["token"].as_str().unwrap().to_string());
+            if let token = token_json["token"].as_str().unwrap().to_string() {
+                return Ok(token);
+            }
         }
         tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     }
