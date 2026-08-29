@@ -1,8 +1,11 @@
+use rand::distr::Alphanumeric;
+use rand::RngExt;
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde_json::Value;
 
 async fn email_register(email: String, password: String, sn: String, captcha_code: String) -> anyhow::Result<String> {
     let client = reqwest::Client::new();
+    let phone =  new_phone_who_dis();
 
     for _ in 0..3 {
         let mut headers = HeaderMap::new();
@@ -24,7 +27,7 @@ async fn email_register(email: String, password: String, sn: String, captcha_cod
             ("email", email.as_str()),
             ("code", captcha_code.as_str()),
             ("password", password.as_str()),
-            ("phone", "1124345453"),
+            ("phone", phone.as_str()),
             ("country", "Myanmar"),
             ("sn", sn.as_str()),
             ("model", "Chrome/150.0.0.0"),
@@ -58,4 +61,11 @@ async fn email_register(email: String, password: String, sn: String, captcha_cod
     }
 
     anyhow::bail!("Account registration failed or SN mismatch occurred across all attempts")
+}
+
+fn new_phone_who_dis() -> String {
+    rand::rng()
+        .sample_iter(rand::distr::uniform::Uniform::new_inclusive('0', '9').unwrap())
+        .take(10)
+        .collect()
 }
