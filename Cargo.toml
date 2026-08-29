@@ -8,7 +8,7 @@ anyhow = "1.0.104"
 governor = "0.10.4"
 rand = "0.10.2"
 regex = "1.13.1"
-reqwest = { version = "0.13.4", features = ["json"] }
+reqwest = { version = "0.13.4", features = ["json", "form"] }
 serde = "1.0.229"
 serde_json = "1.0.151"
 tokio = { version = "1.53.1", features = ["full"] }
