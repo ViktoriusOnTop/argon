@@ -62,11 +62,13 @@ async fn make_account(email: &String, body: &Value) -> anyhow::Result<String> {
             .json()
             .await?;
 
-        let recieved_email = response_json["address"].as_str().unwrap();
-
-        if recieved_email == email{
-            let id = response_json["id"].as_str().unwrap().to_string();
-            return Ok(id);
+        let recieved_email = response_json["address"].as_str();
+        if let Some(_recieved_email) = recieved_email{
+            let recieved_email = response_json["address"].as_str().unwrap();
+            if recieved_email == email{
+                let id = response_json["id"].as_str().unwrap().to_string();
+                return Ok(id);
+            }
         }
         tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     }
