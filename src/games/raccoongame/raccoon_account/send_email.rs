@@ -1,5 +1,6 @@
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde_json::Value;
+use crate::games::raccoongame::limiter::RACCOON_GAME_LIMITER;
 
 //send captcja
 pub async fn send_email(email: String, sn: String) -> anyhow::Result<()> {
@@ -32,6 +33,7 @@ pub async fn send_email(email: String, sn: String) -> anyhow::Result<()> {
             ("os", "pc"),
         ];
 
+        RACCOON_GAME_LIMITER.until_ready().await;
         let response = client.post("https://www.raccoongame.com/users/sendEmail")
             .headers(headers)
             .form(&form_params)

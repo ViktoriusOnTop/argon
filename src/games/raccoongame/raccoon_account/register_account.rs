@@ -2,6 +2,7 @@ use rand::distr::Alphanumeric;
 use rand::RngExt;
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde_json::Value;
+use crate::games::raccoongame::limiter::RACCOON_GAME_LIMITER;
 
 //register acc
 pub async fn email_register(email: String, password: String, sn: String, captcha_code: String) -> anyhow::Result<String> {
@@ -37,7 +38,8 @@ pub async fn email_register(email: String, password: String, sn: String, captcha
             ("device_name", "我的电脑"),
             ("os", "pc"),
         ];
-
+        
+        RACCOON_GAME_LIMITER.until_ready().await;
         let response = client.post("https://www.raccoongame.com/users/emailRegister")
             .headers(headers)
             .form(&form_params)

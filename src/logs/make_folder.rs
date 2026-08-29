@@ -12,7 +12,7 @@ pub fn make_logging_folder() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn get_platform_log_dir() -> anyhow::Result<PathBuf> {
+pub fn get_platform_log_dir() -> anyhow::Result<PathBuf> {
     if cfg!(target_os = "linux") {
         if let Some(base_dirs) = BaseDirs::new() {
             return Ok(base_dirs.home_dir().join(".argon"));
