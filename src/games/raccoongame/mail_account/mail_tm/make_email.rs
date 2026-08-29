@@ -37,7 +37,7 @@ async fn get_domain() -> anyhow::Result<String> {
         if let Some(domain) = domain{
             return Ok(domain.to_string());
         }
-
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     }
     anyhow::bail!("Mail domain not found");
 }
@@ -68,6 +68,7 @@ async fn make_account(email: &String, body: &Value) -> anyhow::Result<String> {
             let id = response_json["id"].as_str().unwrap().to_string();
             return Ok(id);
         }
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     }
     anyhow::bail!("Account creation failed");
 }
@@ -87,6 +88,7 @@ async fn get_token(id: String, body: Value) -> anyhow::Result<String> {
         if token_json["id"] == id{
             return Ok(token_json["token"].as_str().unwrap().to_string());
         }
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     }
     anyhow::bail!("Token creation failed");
 }

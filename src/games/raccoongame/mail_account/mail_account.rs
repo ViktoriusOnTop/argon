@@ -15,11 +15,13 @@ impl ACCOUNT{
             if let Ok((email, token)) = mail_tm::make_email::make_email().await{
                 return Ok(ACCOUNT{mail_tm_token: Option::from(token), mail_gw_token: None, email: Some(email), password: None})
             }
+            tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
         }
         for _ in 0..3 {
             if let Ok((email, token)) = mail_gw::make_email::make_email().await{
                 return Ok(ACCOUNT{mail_tm_token: None, mail_gw_token: Option::from(token), email: Some(email), password: None})
             }
+            tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
         }
         anyhow::bail!("Mail account could not be created")
     }
@@ -29,6 +31,7 @@ impl ACCOUNT{
                 if let Ok(captcha) = mail_tm::fetch_emails::fetch_captcha(token.clone()).await{
                     return Ok(captcha);
                 }
+                tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
             }
         }
         if let Some(token) = &self.mail_gw_token{
@@ -36,6 +39,7 @@ impl ACCOUNT{
                 if let Ok(captcha) = mail_gw::fetch_emails::fetch_captcha(token.clone()).await{
                     return Ok(captcha);
                 }
+                tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
             }
         }
         anyhow::bail!("Account::new failed, and still called get_captcha")

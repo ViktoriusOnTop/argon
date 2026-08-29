@@ -11,6 +11,7 @@ pub async fn fetch_captcha(token: String) -> anyhow::Result<String> {
                 return Ok(captcha);
             }
         }
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     }
     anyhow::bail!("Captcha fetch failed");
 }
@@ -39,6 +40,7 @@ async fn fetch_email(token: String) -> anyhow::Result<Value>{
         if exists{
             return Ok(email_json);
         }
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     }
     anyhow::bail!("Email fetch failed");
 }
