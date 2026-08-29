@@ -3,7 +3,8 @@ use rand::RngExt;
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde_json::Value;
 
-async fn email_register(email: String, password: String, sn: String, captcha_code: String) -> anyhow::Result<String> {
+//register acc
+pub async fn email_register(email: String, password: String, sn: String, captcha_code: String) -> anyhow::Result<String> {
     let client = reqwest::Client::new();
     let phone =  new_phone_who_dis();
 

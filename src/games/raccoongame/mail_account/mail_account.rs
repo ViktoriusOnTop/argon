@@ -2,15 +2,16 @@
 use crate::games::raccoongame::mail_account::{mail_gw, mail_tm};
 
 //todo: add more mail providers
-struct ACCOUNT{
-    mail_tm_token: Option<String>,
-    mail_gw_token: Option<String>,
-    email: Option<String>,
-    password: Option<String>,
+//holds accounts (handler for email acc creation)
+pub struct ACCOUNT{
+    pub mail_tm_token: Option<String>,
+    pub mail_gw_token: Option<String>,
+    pub email: Option<String>,
+    pub password: Option<String>, //redundancy for more providers
 }
 
 impl ACCOUNT{
-    async fn new() -> anyhow::Result<ACCOUNT>{
+    pub async fn new() -> anyhow::Result<ACCOUNT>{
         for _ in 0..3 {
             if let Ok((email, token)) = mail_tm::make_email::make_email().await{
                 return Ok(ACCOUNT{mail_tm_token: Option::from(token), mail_gw_token: None, email: Some(email), password: None})
@@ -25,7 +26,7 @@ impl ACCOUNT{
         }
         anyhow::bail!("Mail account could not be created")
     }
-    async fn get_captcha(&self) -> anyhow::Result<String>{
+    pub async fn get_captcha(&self) -> anyhow::Result<String>{
         if let Some(token) = &self.mail_tm_token{
             for _ in 0..3 {
                 if let Ok(captcha) = mail_tm::fetch_emails::fetch_captcha(token.clone()).await{

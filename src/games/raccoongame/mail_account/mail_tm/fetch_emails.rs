@@ -3,10 +3,12 @@ use regex::Regex;
 use serde_json::Value;
 use crate::games::raccoongame::limiter::MAIL_TM_LIMITER;
 
+//regex for getting captcha is it better than splitting idk
 static CAPTCHA_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"【(.*?)】").unwrap()
 });
 
+//buys a $1 billion private jet
 pub async fn fetch_captcha(token: String) -> anyhow::Result<String> {
     for _ in 0..3 {
         if let Ok(email) = fetch_email(token.clone()).await {
@@ -25,6 +27,7 @@ pub async fn fetch_captcha(token: String) -> anyhow::Result<String> {
     anyhow::bail!("Captcha fetch failed");
 }
 
+//extracts the captcha if you need this comment then your just dumb sorry but its true
 fn extract_captcha(message: &str) -> anyhow::Result<String> {
     if let Some(captures) = CAPTCHA_REGEX.captures(message) {
         if let Some(matched_code) = captures.get(1) {
@@ -34,6 +37,7 @@ fn extract_captcha(message: &str) -> anyhow::Result<String> {
     anyhow::bail!("Captcha pattern matching failed")
 }
 
+//fetch email kinda obvious
 async fn fetch_email(token: String) -> anyhow::Result<Value> {
     for _ in 0..3 {
         let client = reqwest::Client::new();

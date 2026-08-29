@@ -1,10 +1,8 @@
-use rand::distr::Alphanumeric;
-use rand::RngExt;
 use reqwest::header::{HeaderMap, HeaderValue};
-use reqwest::Response;
 use serde_json::Value;
 
-async fn send_email(email: String, sn: String) -> anyhow::Result<()> {
+//send captcja
+pub async fn send_email(email: String, sn: String) -> anyhow::Result<()> {
     for _ in 0..3{
         let client = reqwest::Client::new();
         let mut headers = HeaderMap::new();
