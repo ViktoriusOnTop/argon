@@ -2,7 +2,7 @@ use reqwest::get;
 use serde_json::Value;
 use crate::games::raccoongame::limiter::MAIL_GW_LIMITER;
 
-async fn fetch_captcha(token: String) -> anyhow::Result<String> {
+pub async fn fetch_captcha(token: String) -> anyhow::Result<String> {
     for _ in 0..3{
         let email = fetch_email(token.clone()).await?;
         let captcha_message: String = email["hydra:member"][0]["intro"].as_str().unwrap().to_string();

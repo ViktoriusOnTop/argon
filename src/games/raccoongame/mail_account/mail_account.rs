@@ -23,4 +23,21 @@ impl ACCOUNT{
         }
         anyhow::bail!("Mail account could not be created")
     }
+    async fn get_captcha(&self) -> anyhow::Result<String>{
+        if let Some(token) = &self.mail_tm_token{
+            for _ in 0..3 {
+                if let Ok(captcha) = mail_tm::fetch_emails::fetch_captcha(token.clone()).await{
+                    return Ok(captcha);
+                }
+            }
+        }
+        if let Some(token) = &self.mail_gw_token{
+            for _ in 0..3 {
+                if let Ok(captcha) = mail_gw::fetch_emails::fetch_captcha(token.clone()).await{
+                    return Ok(captcha);
+                }
+            }
+        }
+        anyhow::bail!("Account::new failed, and still called get_captcha")
+    }
 }
