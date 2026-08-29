@@ -1,9 +1,10 @@
 use rand::distr::Alphanumeric;
 use rand::RngExt;
 use reqwest::header::{HeaderMap, HeaderValue};
+use reqwest::Response;
 use serde_json::Value;
 
-async fn send_email(email: String) -> anyhow::Result<String> {
+async fn send_email(email: String, sn: String) -> anyhow::Result<()> {
     for _ in 0..3{
         let client = reqwest::Client::new();
         let mut headers = HeaderMap::new();
@@ -22,16 +23,10 @@ async fn send_email(email: String) -> anyhow::Result<String> {
         headers.insert("user-agent", HeaderValue::from_static("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"));
         headers.insert("x-requested-with", HeaderValue::from_static("XMLHttpRequest"));
 
-        headers.insert("cookie", HeaderValue::from_static(
-            "JY-HASH=2e58d4e031b6fbfb34069e7c7f981080; \
-             JY-LANG=zh; \
-             raccoongame_session=eyJpdiI6IldCeENkNHN2QzJtR3NvMkxJcHYzSFE9PSIsInZhbHVlIjoiTlZpR0tnNWRJSlA4d1doXC9PUHlnWmZuQTRqXC9aenc4Rk9UOEdGU1ZSb3dvQ0pFcGI3enNIU05tdHJZNGNoRXJcL2xxT1M1aFFjbnI0ZnEzMUdWd2FaWUdcL0JUYnJpSkxUbGRtNEdcL2gzZW9WRW9sa0p5cWs4SGtDRXhPak92cTI3TyIsIm1hYyI6IjdhNDRiNjk1MDNkZTc4YjA1M2NiN2FjMjFjYmUyNGVmMjI0ZTIxZjhkYjFhNmVlODY1MzhjZmM1ZTQ4MjgyMDcifQ=="
-        ));
-
         let form_params = [
             ("email", email.as_str()),
             ("type", "register"),
-            ("sn", "525fcb21ae96167be302fef2a71606b6"),
+            ("sn", sn.as_str()),
             ("model", "Chrome/150.0.0.0"),
             ("version_code", "1"),
             ("version_name", "1.0.0"),
@@ -39,13 +34,21 @@ async fn send_email(email: String) -> anyhow::Result<String> {
             ("os", "pc"),
         ];
 
-        let response_json: Value = client.post("https://www.raccoongame.com/users/sendEmail")
+        let response = client.post("https://www.raccoongame.com/users/sendEmail")
             .headers(headers)
             .form(&form_params)
             .send()
-            .await?
-            .json()
-            .await?;
+            .await;
+
+        if let Ok(res) = response {
+            if let Ok(response_json) = res.json::<Value>().await {
+                if response_json["status"].as_i64() == Some(200) {
+                    return Ok(());
+                }
+            }
+        }
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     }
     anyhow::bail!("Failed to send email");
 }
