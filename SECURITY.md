@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-No versions are supported yet. Symphony is not complete yet.
+No versions are supported yet. Argon is not complete yet.
 
 | version | Supported |
 |---------|-----------|
