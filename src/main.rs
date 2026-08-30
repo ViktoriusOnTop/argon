@@ -99,11 +99,9 @@ pub fn get_client() -> OnceCell<Client> {
 }
 
 async fn has_docker(){
-    async fn has_docker(){
-        match setup_woooo().await {
-            Ok(_) => setup_axum().await,
-            Err(e) => eprintln!("milli failed :? {:?}", e),
-        }
+    match setup_woooo().await {
+        Ok(_) => setup_axum().await,
+        Err(e) => eprintln!("milli failed :? {:?}", e),
     }
     setup_axum().await;
 }
