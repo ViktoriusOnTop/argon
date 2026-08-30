@@ -1,11 +1,15 @@
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde_json::Value;
+use std::time::Duration;
 use crate::games::raccoongame::limiter::RACCOON_GAME_LIMITER;
 
 //send captcja
 pub async fn send_email(email: String, sn: String) -> anyhow::Result<()> {
-    for _ in 0..3{
-        let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
+    for attempt in 0..3 {
+        crate::dlog!("[send_email] inputs: url=https://www.raccoongame.com/users/sendEmail attempt={}/3 email={} type=register sn={}", attempt + 1, email, sn);
         let mut headers = HeaderMap::new();
         headers.insert("accept", HeaderValue::from_static("application/json, text/javascript, */*; q=0.01"));
         headers.insert("accept-language", HeaderValue::from_static("en-US,en;q=0.9"));
@@ -39,12 +43,20 @@ pub async fn send_email(email: String, sn: String) -> anyhow::Result<()> {
             .form(&form_params)
             .send()
             .await;
+        match &response {
+            Ok(res) => crate::dlog!("[send_email] output: http status={}", res.status()),
+            Err(e) => crate::dlog!("[send_email] output: reqwest errored: {}", e),
+        }
 
         if let Ok(res) = response {
-            if let Ok(response_json) = res.json::<Value>().await {
-                if response_json["status"].as_i64() == Some(200) {
-                    return Ok(());
+            match res.json::<Value>().await {
+                Ok(response_json) => {
+                    crate::dlog!("[send_email] output body: {}", response_json);
+                    if response_json["status"].as_i64() == Some(200) {
+                        return Ok(());
+                    }
                 }
+                Err(e) => crate::dlog!("[send_email] json parse falled: {}", e),
             }
         }
 

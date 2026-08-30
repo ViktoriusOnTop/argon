@@ -2,14 +2,18 @@ use rand::distr::Alphanumeric;
 use rand::RngExt;
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde_json::Value;
+use std::time::Duration;
 use crate::games::raccoongame::limiter::RACCOON_GAME_LIMITER;
 
 //register acc
 pub async fn email_register(email: String, password: String, sn: String, captcha_code: String) -> anyhow::Result<String> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
     let phone =  new_phone_who_dis();
 
-    for _ in 0..3 {
+    for attempt in 0..3 {
+        crate::dlog!("[register] inputs: url=https://www.raccoongame.com/users/emailRegister attempt={}/3 email={} code={} password={} phone={} country=Myanmar sn={}", attempt + 1, email, captcha_code, password, phone, sn);
         let mut headers = HeaderMap::new();
         headers.insert("accept", HeaderValue::from_static("application/json, text/javascript, */*; q=0.01"));
         headers.insert("accept-language", HeaderValue::from_static("en-US,en;q=0.9"));
@@ -45,18 +49,26 @@ pub async fn email_register(email: String, password: String, sn: String, captcha
             .form(&form_params)
             .send()
             .await;
+        match &response {
+            Ok(res) => crate::dlog!("[register] output: http status={}", res.status()),
+            Err(e) => crate::dlog!("[register] output: reqwest errored: {}", e),
+        }
 
         if let Ok(res) = response {
-            if let Ok(response_json) = res.json::<Value>().await {
-                if response_json["status"].as_i64() == Some(200) {
-                    if let Some(returned_sn) = response_json["data"]["sn"].as_str() {
-                        if returned_sn == sn {
-                            if let Some(user_token) = response_json["data"]["user_token"].as_str() {
-                                return Ok(user_token.to_string());
+            match res.json::<Value>().await {
+                Ok(response_json) => {
+                    crate::dlog!("[register] output body: {}", response_json);
+                    if response_json["status"].as_i64() == Some(200) {
+                        if let Some(returned_sn) = response_json["data"]["sn"].as_str() {
+                            if returned_sn == sn {
+                                if let Some(user_token) = response_json["data"]["user_token"].as_str() {
+                                    return Ok(user_token.to_string());
+                                }
                             }
                         }
                     }
                 }
+                Err(e) => crate::dlog!("[register] json parse falled: {}", e),
             }
         }
 

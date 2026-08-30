@@ -1,14 +1,18 @@
 use std::collections::HashMap;
+use std::time::Duration;
 use serde_json::Value;
 use crate::games::raccoongame::limiter::RACCOON_GAME_LIMITER;
 use crate::games::raccoongame::raccoon_account::full_account_builder::build;
 
 pub async fn yoit() -> anyhow::Result<Value>{
-    for _ in 0..3 {
+    for attempt in 0..3 {
+        crate::dlog!("[yoit] attempt {} of 3: buildin a fresh raccoon acount", attempt + 1);
         if let Ok(boosh) = build().await{
             let (token, sn) = boosh;
 
-            let client = reqwest::Client::new();
+            let client = reqwest::Client::builder()
+                .timeout(Duration::from_secs(10))
+                .build();
 
             let mut params = HashMap::new();
             params.insert("sn", sn.as_str());
@@ -26,8 +30,10 @@ pub async fn yoit() -> anyhow::Result<Value>{
 
             let cookie = format!("as_user_token={}", token.as_str());
 
+            crate::dlog!("[yoit] inputs: url=https://www.raccoongame.com/game/gameList cookie={} params={:?}", cookie, params);
+
             RACCOON_GAME_LIMITER.until_ready().await;
-            if let Ok(response) = client
+            let response = client?
                 .post("https://www.raccoongame.com/game/gameList")
                 .header("accept", "*/*")
                 .header("accept-language", "en-US,en;q=0.9")
@@ -48,9 +54,18 @@ pub async fn yoit() -> anyhow::Result<Value>{
                 )
                 .form(&params)
                 .send()
-                .await{
-                if let Ok(response_json) = response.json::<Value>().await {
-                    return Ok(response_json);
+                .await;
+            match &response {
+                Ok(res) => crate::dlog!("[yoit] output: http status={}", res.status()),
+                Err(e) => crate::dlog!("[yoit] output: reqwest errored: {}", e),
+            }
+            if let Ok(response) = response {
+                match response.json::<Value>().await {
+                    Ok(response_json) => {
+                        crate::dlog!("[yoit] output body: {}", response_json);
+                        return Ok(response_json);
+                    }
+                    Err(e) => crate::dlog!("[yoit] json parse falled: {}", e),
                 }
             }
         }

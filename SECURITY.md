@@ -4,7 +4,7 @@
 
 No versions are supported yet. Symphony is not complete yet.
 
-| Version | Supported |
+| version | Supported |
 |---------|-----------|
 | 0.0.0   | :x:       |
 

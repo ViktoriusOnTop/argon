@@ -10,7 +10,8 @@ static CAPTCHA_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 
 //buys a $1 billion private jet
 pub async fn fetch_captcha(token: String) -> anyhow::Result<String> {
-    for _ in 0..3 {
+    for attempt in 0..3 {
+        crate::dlog!("[mail_tm] fetch_captcha inputs: token={} attempt={}/3", token, attempt + 1);
         if let Ok(email) = fetch_email(token.clone()).await {
             if let Some(members) = email["hydra:member"].as_array() {
                 if !members.is_empty() {
@@ -39,17 +40,25 @@ fn extract_captcha(message: &str) -> anyhow::Result<String> {
 
 //fetch email kinda obvious
 async fn fetch_email(token: String) -> anyhow::Result<Value> {
-    for _ in 0..3 {
-        let client = reqwest::Client::new();
+    for attempt in 0..3 {
+        crate::dlog!("[mail_tm] inputs: url=https://api.mail.tm/messages?page=1 attempt={}/3 bearer_token={}", attempt + 1, token);
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()?;
         MAIL_TM_LIMITER.until_ready().await;
 
         let response = client.get("https://api.mail.tm/messages?page=1")
             .bearer_auth(&token)
             .send()
             .await;
+        match &response {
+            Ok(res) => crate::dlog!("[mail_tm] output: http status={}", res.status()),
+            Err(e) => crate::dlog!("[mail_tm] output: reqwest errored: {}", e),
+        }
 
         if let Ok(res) = response {
             if let Ok(email_json) = res.json::<Value>().await {
+                crate::dlog!("[mail_tm] output body: {}", email_json);
                 if let Some(total) = email_json["hydra:totalItems"].as_i64() {
                     if total > 0 {
                         return Ok(email_json);

@@ -1,13 +1,12 @@
 use rand::distr::Alphanumeric;
 use rand::RngExt;
 use serde_json::{json, Value};
+use std::time::Duration;
 use crate::games::raccoongame::limiter::MAIL_TM_LIMITER;
 
 pub async fn make_email() -> anyhow::Result<(String, String)> {
     let domain = get_domain().await?;
-    #[cfg(debug_assertions)]
-    println!("{}", domain);
-    let email_start = generate_string(15);
+    let email_start = generate_string(15).to_lowercase();
     let pass = generate_string(15);
 
     let email = format!("{}@{}", email_start, domain);
@@ -26,12 +25,18 @@ pub async fn make_email() -> anyhow::Result<(String, String)> {
 
 
 async fn get_domain() -> anyhow::Result<String> {
-    for _ in 0..3{
+    for attempt in 0..3{
+        crate::dlog!("[mail_tm] inputs: url=https://api.mail.tm/domains attempt={}/3", attempt + 1);
         MAIL_TM_LIMITER.until_ready().await;
-        let domain_json: Value = reqwest::get("https://api.mail.tm/domains")
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()?;
+        let domain_json: Value = client.get("https://api.mail.tm/domains")
+            .send()
             .await?
             .json()
             .await?;
+        crate::dlog!("[mail_tm] output body: {}", domain_json);
         let domain = domain_json["hydra:member"][0]["domain"]
             .as_str();
         if let Some(domain) = domain{
@@ -51,8 +56,11 @@ fn generate_string(length: usize) -> String {
 }
 
 async fn make_account(email: &String, body: &Value) -> anyhow::Result<String> {
-    for _ in 0..3{
-        let client = reqwest::Client::new();
+    for attempt in 0..3{
+        crate::dlog!("[mail_tm] inputs: url=https://api.mail.tm/accounts attempt={}/3 body={}", attempt + 1, body);
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()?;
 
         MAIL_TM_LIMITER.until_ready().await;
         let response_json: Value = client.post("https://api.mail.tm/accounts")
@@ -61,6 +69,7 @@ async fn make_account(email: &String, body: &Value) -> anyhow::Result<String> {
             .await?
             .json()
             .await?;
+        crate::dlog!("[mail_tm] output body: {}", response_json);
 
         let recieved_email = response_json["address"].as_str();
         if let Some(_recieved_email) = recieved_email{
@@ -81,8 +90,11 @@ async fn make_account(email: &String, body: &Value) -> anyhow::Result<String> {
 }
 
 async fn get_token(id: String, body: Value) -> anyhow::Result<String> {
-    for _ in 0..3{
-        let client = reqwest::Client::new();
+    for attempt in 0..3{
+        crate::dlog!("[mail_tm] inputs: url=https://api.mail.tm/token attempt={}/3 id={} body={}", attempt + 1, id, body);
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()?;
 
         MAIL_TM_LIMITER.until_ready().await;
         let token_json: Value = client.post("https://api.mail.tm/token")
@@ -91,6 +103,7 @@ async fn get_token(id: String, body: Value) -> anyhow::Result<String> {
             .await?
             .json()
             .await?;
+        crate::dlog!("[mail_tm] output body: {}", token_json);
 
         if token_json["id"] == id {
             if let Some(token_str) = token_json["token"].as_str() {
