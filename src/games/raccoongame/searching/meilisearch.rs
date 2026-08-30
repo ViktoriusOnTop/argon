@@ -22,7 +22,7 @@ pub struct GAME {
     pub game_icon: String,
 }
 
-async fn setup_woooo() -> anyhow::Result<()> {
+pub async fn setup_woooo() -> anyhow::Result<Client> {
     let docker = Docker::connect_with_local_defaults()?;
 
     docker
@@ -110,5 +110,23 @@ async fn setup_woooo() -> anyhow::Result<()> {
         Err(e) => eprintln!("!sendeth {}", e),
     }
 
-    Ok(())
+    Ok(ms_client)
+}
+
+pub async fn search_meilisearch(client: &Client, query: &str) -> anyhow::Result<Vec<GAME>> {
+    let index =client.index("games");
+
+    let results = index
+        .search()
+        .with_query(query)
+        .execute::<GAME>()
+        .await?;
+
+    let games: Vec<GAME> = results
+        .hits
+        .into_iter()
+        .map(|hit| hit.result)
+        .collect();
+
+    Ok(games)
 }
