@@ -9,3 +9,31 @@ Argon is not complete yet :'()
 oh also just to be clear, since i use comments that means that this is 100% vibecoded
 
 best to run argon on linux
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+If you would like, I could code the repo in a more engaging — and thus more popular — readme, because it's not the code, it's the readme. #satire
