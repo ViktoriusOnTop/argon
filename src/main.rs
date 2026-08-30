@@ -48,14 +48,6 @@ async fn main() {
 
     let args = Args::parse();
 
-    tokio::spawn(async {
-        tokio::signal::ctrl_c().await.ok();
-        println!();
-        println!("o7, cleanin up meili stuff");
-        cleanup_meili().await;
-        std::process::exit(0);
-    });
-
     let argon = r#"░█████╗░██████╗░░██████╗░░█████╗░███╗░░██╗
 ██╔══██╗██╔══██╗██╔════╝░██╔══██╗████╗░██║
 ███████║██████╔╝██║░░██╗░██║░░██║██╔██╗██║
@@ -158,18 +150,8 @@ async fn setup_axum(){
 
     let listener = TcpListener::bind("0.0.0.0:1818").await.unwrap(); //argon's atomic number is 18, clever ik
 
-    axum::serve(listener, app.into_make_service_with_connect_info::<std::net::SocketAddr>()).await.expect("app start failed, is viktoriusontop stupid? :(");
     println!("done or dumb");
-}
-
-async fn cleanup_meili() {
-    let _ = Command::new("docker")
-        .args(["rm", "-f", "meili-mommy"])
-        .output();
-    match std::fs::remove_dir_all("meili_data") {
-        Ok(_) => println!("meili_data yeeted"),
-        Err(e) => eprintln!("couldnt yeet meili_data: {} (prob root owned, sudo chown it or rm it urself)", e),
-    }
+    axum::serve(listener, app.into_make_service_with_connect_info::<std::net::SocketAddr>()).await.expect("app start failed, is viktoriusontop stupid? :(");
 }
 
 fn is_docker_cli_installed() -> bool {

@@ -6,7 +6,7 @@ No versions are supported yet. Symphony is not complete yet.
 
 | version | Supported |
 |---------|-----------|
-| 0.0.0   | :x:       |
+| 0.1.0   | :x:       |
 
 ## Reporting a Vulnerability
 
