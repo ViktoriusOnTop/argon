@@ -42,7 +42,9 @@ async fn get_domain() -> anyhow::Result<String> {
         if let Some(domain) = domain{
             return Ok(domain.to_string());
         }
-        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        if crate::games::raccoongame::limiter::RETRY_BACKOFF_ENABLED {
+            tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        }
     }
     anyhow::bail!("Mail domain not found");
 }
@@ -72,8 +74,7 @@ async fn make_account(email: &String, body: &Value) -> anyhow::Result<String> {
         crate::dlog!("[mail_gw] output body: {}", response_json);
 
         let recieved_email = response_json["address"].as_str();
-        if let Some(_recieved_email) = recieved_email{
-            let recieved_email = response_json["address"].as_str().unwrap();
+        if let Some(recieved_email) = recieved_email{
             if recieved_email == email{
                 if let Some(received_email) = response_json["address"].as_str() {
                     if received_email == email {
@@ -84,7 +85,9 @@ async fn make_account(email: &String, body: &Value) -> anyhow::Result<String> {
                 }
             }
         }
-        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        if crate::games::raccoongame::limiter::RETRY_BACKOFF_ENABLED {
+            tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        }
     }
     anyhow::bail!("Account creation failed");
 }
@@ -111,7 +114,11 @@ async fn get_token(id: String, body: Value) -> anyhow::Result<String> {
             }
         }
 
-        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        if crate::games::raccoongame::limiter::RETRY_BACKOFF_ENABLED {
+
+            tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+
+        }
     }
     anyhow::bail!("Token creation failed");
 }

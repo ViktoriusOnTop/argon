@@ -6,7 +6,6 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use crate::get_client;
-
 #[derive(Deserialize)]
 pub struct PooPooPeePeeParams {
     pub q: String,
@@ -19,12 +18,16 @@ pub struct PooPooPeePeeResponse {
 
 pub async fn search(
     Query(params): Query<PooPooPeePeeParams>,
-) -> anyhow::Result<Json<PooPooPeePeeResponse>, StatusCode> {
+) -> Result<Json<PooPooPeePeeResponse>, (StatusCode, [(axum::http::HeaderName, &'static str); 1], Json<Value>)> {
     let client_cell = get_client();
 
-    let client = client_cell
-        .get()
-        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    let Some(client) = client_cell.get() else {
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            [(axum::http::header::RETRY_AFTER, "300")],
+            Json(serde_json::json!({"error": "search unavailable, argon is running without docker or meilisearch isnt up yet"})),
+        ));
+    };
 
     let search_result = crate::games::raccoongame::searching::meilisearch::search_meilisearch(
         client,
@@ -33,7 +36,11 @@ pub async fn search(
         .await
         .map_err(|e| {
             eprintln!("mili mommy search go boom no no :( {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                [(axum::http::header::RETRY_AFTER, "5")],
+                Json(serde_json::json!({"error": "search failed"})),
+            )
         })?;
 
     Ok(Json(PooPooPeePeeResponse {

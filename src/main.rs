@@ -12,6 +12,7 @@ use crate::api::argon::info::get_info;
 use crate::api::raccoon::account::get_account;
 use crate::api::raccoon::search::search;
 use crate::games::raccoongame::searching::meilisearch::setup_woooo;
+use crate::games::raccoongame::pool::handler::POOL;
 
 pub mod games;
 pub mod logs;
@@ -39,7 +40,12 @@ struct Args {
 }
 
 static MEILI_CLIENT: OnceCell<meilisearch_sdk::client::Client> = OnceCell::const_new();
+static ACCOUNT_POOL: OnceCell<POOL> = OnceCell::const_new();
 static VERBOSE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn get_pool() -> OnceCell<POOL> {
+    ACCOUNT_POOL.clone()
+}
 
 
 #[tokio::main]
@@ -69,6 +75,8 @@ async fn main() {
         VERBOSE.store(true, std::sync::atomic::Ordering::Relaxed);
         println!("verbose mode on E:");
     }
+
+    let _ = ACCOUNT_POOL.get_or_init(|| async { POOL::new().await }).await;
 
     if !args.no_docker {
         if is_docker_cli_installed() {

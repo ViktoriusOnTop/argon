@@ -12,6 +12,7 @@ pub async fn email_register(email: String, password: String, sn: String, captcha
         .build()?;
     let phone =  new_phone_who_dis();
 
+    let mut last_status = String::from("no response");
     for attempt in 0..3 {
         crate::dlog!("[register] inputs: url=https://www.raccoongame.com/users/emailRegister attempt={}/3 email={} code={} password={} phone={} country=Myanmar sn={}", attempt + 1, email, captcha_code, password, phone, sn);
         let mut headers = HeaderMap::new();
@@ -55,6 +56,7 @@ pub async fn email_register(email: String, password: String, sn: String, captcha
         }
 
         if let Ok(res) = response {
+            last_status = res.status().to_string();
             match res.json::<Value>().await {
                 Ok(response_json) => {
                     crate::dlog!("[register] output body: {}", response_json);
@@ -72,10 +74,14 @@ pub async fn email_register(email: String, password: String, sn: String, captcha
             }
         }
 
-        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        if crate::games::raccoongame::limiter::RETRY_BACKOFF_ENABLED {
+
+            tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+
+        }
     }
 
-    anyhow::bail!("Account registration failed or SN mismatch occurred across all attempts")
+    anyhow::bail!("account registration failed or sn mismatch occurred across all attempts (last http status: {})", last_status)
 }
 
 fn new_phone_who_dis() -> String {

@@ -8,6 +8,7 @@ pub async fn send_email(email: String, sn: String) -> anyhow::Result<()> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
         .build()?;
+    let mut last_status = String::from("no response");
     for attempt in 0..3 {
         crate::dlog!("[send_email] inputs: url=https://www.raccoongame.com/users/sendEmail attempt={}/3 email={} type=register sn={}", attempt + 1, email, sn);
         let mut headers = HeaderMap::new();
@@ -49,6 +50,7 @@ pub async fn send_email(email: String, sn: String) -> anyhow::Result<()> {
         }
 
         if let Ok(res) = response {
+            last_status = res.status().to_string();
             match res.json::<Value>().await {
                 Ok(response_json) => {
                     crate::dlog!("[send_email] output body: {}", response_json);
@@ -60,7 +62,11 @@ pub async fn send_email(email: String, sn: String) -> anyhow::Result<()> {
             }
         }
 
-        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        if crate::games::raccoongame::limiter::RETRY_BACKOFF_ENABLED {
+
+            tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+
+        }
     }
-    anyhow::bail!("Failed to send email");
+    anyhow::bail!("failed to send email (last http status: {})", last_status);
 }

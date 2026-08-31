@@ -5,25 +5,35 @@ use crate::games::raccoongame::raccoon_account::register_account::email_register
 use crate::games::raccoongame::raccoon_account::send_email::send_email;
 
 pub async fn build() -> anyhow::Result<(String, String)> {
+    let mut last_err = String::from("no attempt succeeded");
     for _ in 0..3 {
-        if let Ok(account) = ACCOUNT::new().await {
-            if let Some(email) = &account.email {
-                let sn = generate_sn();
-                let pass = generate_string(15);
+        match ACCOUNT::new().await {
+            Err(e) => last_err = format!("make_account: {e:#}"),
+            Ok(account) => {
+                if let Some(email) = &account.email {
+                    let sn = generate_sn();
+                    let pass = generate_string(15);
 
-                if send_email(email.clone(), sn.clone()).await.is_ok() {
-
-                    if let Ok(captcha_code) = account.get_captcha().await {
-                        if let Ok(user_token) = email_register(email.clone(), pass.clone(), sn.clone(), captcha_code).await {
-                            return Ok((user_token, sn));
-                        }
+                    match send_email(email.clone(), sn.clone()).await {
+                        Err(e) => last_err = format!("send_email: {e:#}"),
+                        Ok(_) => match account.get_captcha().await {
+                            Err(e) => last_err = format!("get_captcha: {e:#}"),
+                            Ok(captcha_code) => match email_register(email.clone(), pass.clone(), sn.clone(), captcha_code).await {
+                                Ok(user_token) => return Ok((user_token, sn)),
+                                Err(e) => last_err = format!("email_register: {e:#}"),
+                            },
+                        },
                     }
+                } else {
+                    last_err = "make_account: no email in response".to_string();
                 }
             }
         }
-        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        if crate::games::raccoongame::limiter::RETRY_BACKOFF_ENABLED {
+            tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        }
     }
-    anyhow::bail!("All steps failed three times probably cut off by raccoon")
+    anyhow::bail!("build failed: {}", last_err)
 }
 
 fn generate_sn() -> String {

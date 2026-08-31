@@ -23,7 +23,9 @@ pub async fn fetch_captcha(token: String) -> anyhow::Result<String> {
                 }
             }
         }
-        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        if crate::games::raccoongame::limiter::RETRY_BACKOFF_ENABLED {
+            tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        }
     }
     anyhow::bail!("Captcha fetch failed");
 }
@@ -66,7 +68,9 @@ async fn fetch_email(token: String) -> anyhow::Result<Value> {
                 }
             }
         }
-        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        if crate::games::raccoongame::limiter::RETRY_BACKOFF_ENABLED {
+            tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        }
     }
     anyhow::bail!("Email fetch failed or inbox empty");
 }
