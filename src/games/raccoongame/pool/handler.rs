@@ -133,7 +133,9 @@ async fn worker_loop(state: Arc<Shared>) {
                 let backoff =
                     3u64.saturating_mul(1 << consecutive_fails.min(5)).min(MAX_BACKOFF_SECS);
                 eprintln!("worker build failed x{}, nappin {}s", consecutive_fails, backoff);
-                tokio::time::sleep(Duration::from_secs(backoff)).await;
+                if crate::games::raccoongame::limiter::RETRY_BACKOFF_ENABLED {
+                    tokio::time::sleep(Duration::from_secs(backoff)).await;
+                }
             }
         }
     }
