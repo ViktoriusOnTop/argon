@@ -1,5 +1,9 @@
 # Argon
 ___
+
+Implimentation: DIY or be dumb and use ai <textarea readonly rows="1" cols="50" style="resize:none;">Pull the git</textarea>
+
+
 add 67+ games to your site with this api (real number in my test was 237)
 
 Argon is not complete yet :'()
@@ -13,3 +17,4 @@ best to run argon on linux
 If you would like, I could code the repo in a more engaging — and thus more popular — readme, because it's not the code, it's the readme. #satire
 
 DISCLAIMER: all code is written by humans, the stuff above was satire. like the made by ai not by humans i had to copy paste em dashes
+
