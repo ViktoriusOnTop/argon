@@ -1,9 +1,6 @@
 # Argon
 ___
 
-Implimentation: DIY or be dumb and use ai <textarea readonly rows="1" cols="50" style="resize:none;">Pull the git</textarea>
-
-
 add 67+ games to your site with this api (real number in my test was 237)
 
 Argon is not complete yet :'()
