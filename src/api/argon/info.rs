@@ -11,11 +11,13 @@ pub struct InfoResponse {
 
 pub async fn get_info() -> Json<InfoResponse> {
     let info = InfoResponse {
-        version: "0.2.0".to_string(),
+        version: "0.9.9".to_string(),
         features: vec![
-            "Mail endpoints work".to_string(),
-            "Raccoon registration".to_string(),
-            "Search through games".to_string(),
+            "mail endpoints work".to_string(),
+            "raccoon registration".to_string(),
+            "search through games".to_string(),
+            "gameplay works".to_string(),
+            "v1 out!".to_string(),
         ],
         repo: "https://github.com/ViktoriusOnTop/argon".to_string(),
         contributors: vec!["ViktoriusOnTop".to_string()],

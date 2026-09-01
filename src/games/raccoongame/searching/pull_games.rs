@@ -6,7 +6,7 @@ use crate::games::raccoongame::raccoon_account::full_account_builder::build;
 
 pub async fn yoit() -> anyhow::Result<Vec<Value>> {
     for _ in 0..3 {
-        if let Ok((token, sn)) = build().await {
+        if let Ok((token, sn, _, _)) = build().await {
             if let Ok(games) = fetch_pages(&token, &sn).await {
                 return Ok(games);
             }

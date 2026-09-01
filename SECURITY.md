@@ -6,7 +6,7 @@ No versions are supported yet. Argon is not complete yet.
 
 | version | Supported |
 |---------|-----------|
-| 0.1.0   | :x:       |
+| 0.9.9   | yes       |
 
 ## Reporting a Vulnerability
 

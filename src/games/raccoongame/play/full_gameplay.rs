@@ -12,8 +12,6 @@ use aes::cipher::{BlockDecrypt, KeyInit};
 const RESULT_KEY: &[u8; 32] = b"fd39e724f7c1e4b3d34bc7c72b5349c3";
 const RESULT_IV: &[u8; 16] = b"dd39e4a3337fe25a";
 
-const QUEUE_MAX_POLLS: u32 = 600;
-const QUEUE_POLL_SECS: u64 = 3;
 
 fn decrypt_result(result_b64: &str) -> anyhow::Result<Value> {
     let mut data = base64::engine::general_purpose::STANDARD.decode(result_b64)?;
@@ -51,53 +49,17 @@ fn decrypt_result(result_b64: &str) -> anyhow::Result<Value> {
     Ok(parsed)
 }
 
+pub enum PlayStart {
+    Ready(Rtcs),
+    Queued { queue_id: String, position: u64 },
+}
 
-pub async fn get_rtc(
-    token: &str,
-    sn: &str,
-    game_key: &str,
-    offer_sdp: &str,
-) -> anyhow::Result<Rtcs> {
-    crate::vlog!("[get_rtc] inputs: sn={} game_key={}", sn, game_key);
+pub enum PlayFinish {
+    StillQueued { position: u64 },
+    Ready(Rtcs),
+}
 
-    let _ = check_cost(token, sn, game_key).await?;
-
-    let play = play_game(token, sn, game_key, None).await?;
-
-    let mut server_data = if play["status"].as_u64() == Some(201)
-        || (play["status"].as_u64() == Some(200) && play["data"]["play_queue_id"].is_string())
-    {
-        let queue_id = play["data"]["play_queue_id"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("got queued but no queue id came with it"))?
-            .to_string();
-        crate::vlog!("[get_rtc] queued under {}, polling", queue_id);
-
-        let mut pos = 1;
-        for i in 0..QUEUE_MAX_POLLS {
-            pos = get_pos(token, sn, &queue_id).await?;
-            crate::vlog!("[get_rtc] queue pos {} (poll {})", pos, i + 1);
-            if pos == 0 {
-                break;
-            }
-            tokio::time::sleep(std::time::Duration::from_secs(QUEUE_POLL_SECS)).await;
-        }
-        if pos != 0 {
-            anyhow::bail!("queue never hit 0 after {} polls, giving up", QUEUE_MAX_POLLS);
-        }
-
-        let claim = play_game(token, sn, game_key, Some(&queue_id)).await?;
-        let result = claim["data"]["result"].as_str().ok_or_else(|| {
-            anyhow::anyhow!("queue claim had no result, claim status {}", claim["status"])
-        })?;
-        decrypt_result(result)?
-    } else {
-        let result = play["data"]["result"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("playGame had no result, status {}", play["status"]))?;
-        decrypt_result(result)?
-    };
-
+fn parse_server_data(server_data: Value) -> anyhow::Result<(String, String, String, Value, String, String)> {
     let sc_id = server_data["sc_id"]
         .as_str()
         .or_else(|| server_data["play_id"].as_str())
@@ -112,20 +74,79 @@ pub async fn get_rtc(
         .ok_or_else(|| anyhow::anyhow!("server_data missing gl_key, no game node assigned"))?
         .to_string();
     let play_config = server_data["play_config"].clone();
-    let message_server = &server_data["message_server"];
-    let ws_url = message_server["url"]
+    let ws_url = server_data["message_server"]["url"]
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("server_data missing message_server.url, no signaling link"))?
         .to_string();
-    let ws_token = message_server["token"]
+    let ws_token = server_data["message_server"]["token"]
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("server_data missing message_server.token"))?
         .to_string();
+    Ok((sc_id, bs_sc_id, gl_key, play_config, ws_url, ws_token))
+}
+
+pub async fn get_rtc(
+    token: &str,
+    sn: &str,
+    game_key: &str,
+    offer_sdp: &str,
+) -> anyhow::Result<PlayStart> {
+    crate::vlog!("[get_rtc] inputs: sn={} game_key={}", sn, game_key);
+
+    let _ = check_cost(token, sn, game_key).await?;
+
+    let play = play_game(token, sn, game_key, None).await?;
+
+    if play["status"].as_u64() == Some(201)
+        || (play["status"].as_u64() == Some(200) && play["data"]["play_queue_id"].is_string())
+    {
+        let queue_id = play["data"]["play_queue_id"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("got queued but no queue id came with it"))?
+            .to_string();
+        let position = play["data"]["queue_pos"].as_u64().unwrap_or(1);
+        crate::vlog!("[get_rtc] queued under {} at {}", queue_id, position);
+        return Ok(PlayStart::Queued { queue_id, position });
+    }
+
+    let result = play["data"]["result"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("playGame had no result, status {}", play["status"]))?;
+    let server_data = decrypt_result(result)?;
+    let (_sc_id, bs_sc_id, gl_key, play_config, ws_url, ws_token) = parse_server_data(server_data)?;
 
     crate::vlog!("[get_rtc] server ready sc_id={} gl_key={} ws={}", bs_sc_id, gl_key, ws_url);
 
     let rtcs = get_rtcs(&ws_url, &ws_token, sn, &gl_key, &bs_sc_id, play_config, offer_sdp).await?;
-
     crate::vlog!("[get_rtc] done, answer + {} candidates", rtcs.candidates.len());
-    Ok(rtcs)
+    Ok(PlayStart::Ready(rtcs))
+}
+
+pub async fn finish_rtc(
+    token: &str,
+    sn: &str,
+    game_key: &str,
+    queue_id: &str,
+    offer_sdp: &str,
+) -> anyhow::Result<PlayFinish> {
+    crate::vlog!("[finish_rtc] inputs: sn={} game_key={} queue_id={}", sn, game_key, queue_id);
+
+    let pos = get_pos(token, sn, queue_id).await?;
+    if pos != 0 {
+        crate::vlog!("[finish_rtc] queue pos {}", pos);
+        return Ok(PlayFinish::StillQueued { position: pos });
+    }
+
+    let claim = play_game(token, sn, game_key, Some(queue_id)).await?;
+    let result = claim["data"]["result"].as_str().ok_or_else(|| {
+        anyhow::anyhow!("queue claim had no result, claim status {}", claim["status"])
+    })?;
+    let server_data = decrypt_result(result)?;
+    let (_sc_id, bs_sc_id, gl_key, play_config, ws_url, ws_token) = parse_server_data(server_data)?;
+
+    crate::vlog!("[finish_rtc] server ready sc_id={} gl_key={} ws={}", bs_sc_id, gl_key, ws_url);
+
+    let rtcs = get_rtcs(&ws_url, &ws_token, sn, &gl_key, &bs_sc_id, play_config, offer_sdp).await?;
+    crate::vlog!("[finish_rtc] done, answer + {} candidates", rtcs.candidates.len());
+    Ok(PlayFinish::Ready(rtcs))
 }

@@ -10,6 +10,8 @@ use meilisearch_sdk::client::Client;
 use tokio::sync::OnceCell;
 use crate::api::argon::info::get_info;
 use crate::api::raccoon::account::get_account;
+use crate::api::raccoon::play::play;
+use crate::api::raccoon::queue_status::queue_status;
 use crate::api::raccoon::search::search;
 use crate::games::raccoongame::searching::meilisearch::setup_woooo;
 use crate::games::raccoongame::pool::handler::POOL;
@@ -127,7 +129,25 @@ async fn setup_axum(){
             .with_extractor(PeerIp::default())
             .expect_connect_info()
             .quota_default(
-                Quota::requests_per_hour(nz!(5u32),
+                Quota::requests_per_hour(nz!(30u32),
+                ))
+            .finish()
+            .unwrap();
+
+    let play_governor = GovernorConfigBuilder::default()
+            .with_extractor(PeerIp::default())
+            .expect_connect_info()
+            .quota_default(
+                Quota::requests_per_hour(nz!(30u32),
+                ))
+            .finish()
+            .unwrap();
+
+    let queue_governor = GovernorConfigBuilder::default()
+            .with_extractor(PeerIp::default())
+            .expect_connect_info()
+            .quota_default(
+                Quota::requests_per_hour(nz!(10u32),
                 ))
             .finish()
             .unwrap();
@@ -149,14 +169,27 @@ async fn setup_axum(){
         .route("/api/raccoon/account", get(get_account))
         .layer(GovernorLayer::new(account_governor));
 
+    let play_app: Router<()> = Router::new()
+        .route("/api/raccoon/play", post(play))
+        .layer(GovernorLayer::new(play_governor));
+
+    let queue_app: Router<()> = Router::new()
+        .route("/api/raccoon/queue", get(queue_status))
+        .layer(GovernorLayer::new(queue_governor));
+
     let info_app: Router<()> = Router::new()
         .route("/api/argon/info", get(get_info))
         .layer(GovernorLayer::new(information_governor));
 
-    let app = Router::new()
+    let raccoon_app = Router::new()
         .merge(search_app)
         .merge(account_app)
+        .merge(play_app)
+        .merge(queue_app)
         .merge(info_app);
+
+    let app = Router::new()
+        .merge(raccoon_app);
 
     let listener = TcpListener::bind("0.0.0.0:1818").await.unwrap(); //argon's atomic number is 18, clever ik
 

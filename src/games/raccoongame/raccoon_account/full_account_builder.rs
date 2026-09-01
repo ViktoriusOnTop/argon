@@ -4,7 +4,7 @@ use crate::games::raccoongame::mail_account::mail_account::ACCOUNT;
 use crate::games::raccoongame::raccoon_account::register_account::email_register;
 use crate::games::raccoongame::raccoon_account::send_email::send_email;
 
-pub async fn build() -> anyhow::Result<(String, String)> {
+pub async fn build() -> anyhow::Result<(String, String, String, String)> {
     let mut last_err = String::from("no attempt succeeded");
     for _ in 0..3 {
         match ACCOUNT::new().await {
@@ -19,7 +19,7 @@ pub async fn build() -> anyhow::Result<(String, String)> {
                         Ok(_) => match account.get_captcha().await {
                             Err(e) => last_err = format!("get_captcha: {e:#}"),
                             Ok(captcha_code) => match email_register(email.clone(), pass.clone(), sn.clone(), captcha_code).await {
-                                Ok(user_token) => return Ok((user_token, sn)),
+                                Ok(user_token) => return Ok((user_token, sn, email.clone(), pass.clone())),
                                 Err(e) => last_err = format!("email_register: {e:#}"),
                             },
                         },

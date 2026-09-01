@@ -11,8 +11,8 @@ use tokio::sync::{Mutex, Notify};
 use crate::games::raccoongame::pool::account::ACCOUNT;
 use crate::games::raccoongame::raccoon_account::full_account_builder::build;
 use crate::logs::read::raccoon::pool::get_pool_config::get_target_stock;
-use crate::logs::read::raccoon::pool::load_pool::load_pool;
-use crate::logs::write::raccoon::pool::save_pool::save_pool;
+use crate::logs::write::raccoon::database::accountdb::account::ACCOUNT as DB_ACCOUNT;
+use crate::logs::write::raccoon::database::accountdb::db as accountdb;
 
 const WAIT_TIMEOUT: u64 = 30;
 const MAX_BACKOFF_SECS: u64 = 60;
@@ -35,7 +35,7 @@ struct Shared {
 impl POOL {
     pub async fn new() -> POOL {
         let state = Arc::new(Shared {
-            accounts: Mutex::new(load_pool()),
+            accounts: Mutex::new(load_stock()),
             notify: Notify::new(),
             worker_count: AtomicU8::new(0),
             inflight: AtomicUsize::new(0),
@@ -118,13 +118,21 @@ async fn worker_loop(state: Arc<Shared>) {
         state.inflight.fetch_sub(1, Ordering::Relaxed);
 
         match result {
-            Ok(account) => {
+            Ok((token, sn, email, password)) => {
                 consecutive_fails = 0;
-                let mut stock = state.accounts.lock().await;
-                stock.push_back(decode(account));
-                if let Err(e) = save_pool(&stock) {
-                    eprintln!("couldnt save pool.json, stock is in ram and in ram alone: {}", e);
+                let public_id = accountdb::new_public_id();
+                let account = ACCOUNT::new(token.clone(), sn.clone(), email.clone(), password.clone(), public_id.clone());
+                let record = DB_ACCOUNT { sn, token, email, password, public_id };
+                match accountdb::account_db() {
+                    Ok(db) => {
+                        if let Err(e) = db.push_account(&record) {
+                            eprintln!("couldnt push account to heed, account is lost to the void: {}", e);
+                        }
+                    }
+                    Err(e) => eprintln!("couldnt open accountdb, account is lost to the void: {}", e),
                 }
+                let mut stock = state.accounts.lock().await;
+                stock.push_back(account);
                 drop(stock);
                 state.notify.notify_waiters();
             }
@@ -141,8 +149,20 @@ async fn worker_loop(state: Arc<Shared>) {
     }
 }
 
-pub fn decode(account: (String, String)) -> ACCOUNT {
-    let (token, sn) = account;
-    ACCOUNT::new(token, sn)
+pub fn load_stock() -> VecDeque<ACCOUNT> {
+    let mut stock = VecDeque::new();
+    match accountdb::account_db() {
+        Ok(db) => match db.all_accounts() {
+            Ok(accounts) => {
+                for a in accounts {
+                    stock.push_back(ACCOUNT::new(a.token.clone(), a.sn.clone(), a.email.clone(), a.password.clone(), a.public_id.clone()));
+                }
+                println!("loaded {} accounts from heed", stock.len());
+            }
+            Err(e) => println!("couldnt read heed, starting with an empty pool: {}", e),
+        },
+        Err(e) => println!("couldnt open heed, starting with an empty pool: {}", e),
+    }
+    stock
 }
 
