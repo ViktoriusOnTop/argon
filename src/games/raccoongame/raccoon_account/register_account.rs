@@ -14,7 +14,7 @@ pub async fn email_register(email: String, password: String, sn: String, captcha
 
     let mut last_status = String::from("no response");
     for attempt in 0..3 {
-        crate::dlog!("[register] inputs: url=https://www.raccoongame.com/users/emailRegister attempt={}/3 email={} code={} password={} phone={} country=Myanmar sn={}", attempt + 1, email, captcha_code, password, phone, sn);
+        crate::vlog!("[register] inputs: url=https://www.raccoongame.com/users/emailRegister attempt={}/3 email={} code={} password={} phone={} country=Myanmar sn={}", attempt + 1, email, captcha_code, password, phone, sn);
         let mut headers = HeaderMap::new();
         headers.insert("accept", HeaderValue::from_static("application/json, text/javascript, */*; q=0.01"));
         headers.insert("accept-language", HeaderValue::from_static("en-US,en;q=0.9"));
@@ -51,15 +51,15 @@ pub async fn email_register(email: String, password: String, sn: String, captcha
             .send()
             .await;
         match &response {
-            Ok(res) => crate::dlog!("[register] output: http status={}", res.status()),
-            Err(e) => crate::dlog!("[register] output: reqwest errored: {}", e),
+            Ok(res) => crate::vlog!("[register] output: http status={}", res.status()),
+            Err(e) => crate::vlog!("[register] output: reqwest errored: {}", e),
         }
 
         if let Ok(res) = response {
             last_status = res.status().to_string();
             match res.json::<Value>().await {
                 Ok(response_json) => {
-                    crate::dlog!("[register] output body: {}", response_json);
+                    crate::vlog!("[register] output body: {}", response_json);
                     if response_json["status"].as_i64() == Some(200) {
                         if let Some(returned_sn) = response_json["data"]["sn"].as_str() {
                             if returned_sn == sn {
@@ -70,7 +70,7 @@ pub async fn email_register(email: String, password: String, sn: String, captcha
                         }
                     }
                 }
-                Err(e) => crate::dlog!("[register] json parse falled: {}", e),
+                Err(e) => crate::vlog!("[register] json parse falled: {}", e),
             }
         }
 

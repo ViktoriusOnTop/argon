@@ -17,11 +17,12 @@ use crate::games::raccoongame::pool::handler::POOL;
 pub mod games;
 pub mod logs;
 pub mod api;
+pub mod captcha;
 
 #[macro_export]
-macro_rules! dlog {
+macro_rules! vlog {
     ($($arg:tt)*) => {
-        if crate::VERBOSE.load(std::sync::atomic::Ordering::Relaxed) {
+        if $crate::VERBOSE.load(std::sync::atomic::Ordering::Relaxed) {
             println!($($arg)*);
         }
     };
@@ -39,7 +40,7 @@ struct Args {
     no_server: bool,
 }
 
-static MEILI_CLIENT: OnceCell<meilisearch_sdk::client::Client> = OnceCell::const_new();
+static MEILI_CLIENT: OnceCell<Client> = OnceCell::const_new();
 static ACCOUNT_POOL: OnceCell<POOL> = OnceCell::const_new();
 static VERBOSE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 

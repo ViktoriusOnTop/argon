@@ -5,7 +5,6 @@ use std::time::Duration;
 use meilisearch_sdk::client::Client;
 use serde::{Deserialize, Serialize};
 use crate::games::raccoongame::searching::extract_titles::extract;
-use crate::games::raccoongame::searching::pull_games::yoit;
 
 const IMAGE: &str = "getmeili/meilisearch:latest";
 const CONTAINER_NAME: &str = "meili-mommy";
@@ -22,27 +21,27 @@ pub struct GAME {
 
 pub async fn setup_woooo() -> anyhow::Result<Client> {
 
-    crate::dlog!("inspecting for an index");
+    crate::vlog!("inspecting for an index");
     let inspect_output = Command::new("docker")
         .args(["image", "inspect", "getmeili/meilisearch:latest"])
         .output()
         .expect("docker inspect fumbled, make an issue");
-    crate::dlog!("[meili] image inspect inputs: args={:?} stdout={} stderr={}",
+    crate::vlog!("[meili] image inspect inputs: args={:?} stdout={} stderr={}",
         ["image", "inspect", "getmeili/meilisearch:latest"],
         String::from_utf8_lossy(&inspect_output.stdout).trim_end(),
         String::from_utf8_lossy(&inspect_output.stderr).trim_end());
 
     if inspect_output.status.success() {
-        crate::dlog!("found it");
-        crate::dlog!("[meili] image already exists, skippin the pull");
+        crate::vlog!("found it");
+        crate::vlog!("[meili] image already exists, skippin the pull");
     } else {
-        crate::dlog!("huh. musta got away");
+        crate::vlog!("huh. musta got away");
         let docker_output = Command::new("docker")
             .args(["pull", "getmeili/meilisearch:latest"])
             .output()
             .expect("failed to execute pull meilisearch make an issue");
         println!("{}", docker_output.status);
-        crate::dlog!("[meili] docker pull inputs: args={:?} stdout={} stderr={}",
+        crate::vlog!("[meili] docker pull inputs: args={:?} stdout={} stderr={}",
             ["pull", "getmeili/meilisearch:latest"],
             String::from_utf8_lossy(&docker_output.stdout).trim_end(),
             String::from_utf8_lossy(&docker_output.stderr).trim_end());
@@ -80,7 +79,7 @@ pub async fn setup_woooo() -> anyhow::Result<Client> {
         .expect("docker didnt pulleth");
 
     println!("{}", start_status.status);
-    crate::dlog!("[meili] docker run inputs: current_dir={} args={:?} stdout={} stderr={}",
+    crate::vlog!("[meili] docker run inputs: current_dir={} args={:?} stdout={} stderr={}",
         current_dir,
         ["run", "-d", "--rm", "--name", CONTAINER_NAME, "-p", "7700:7700", "-e", "MEILI_MASTER_KEY=key",
          "-v", &format!("{}/meili_data:/meili_data", current_dir), "getmeili/meilisearch:latest"],
@@ -103,12 +102,12 @@ pub async fn setup_woooo() -> anyhow::Result<Client> {
             .await
         {
             Ok(res) if res.status().is_success() => {
-                crate::dlog!("im back i totally didn't poke meili {} times for it to wake up", attempt + 1);
+                crate::vlog!("im back i totally didn't poke meili {} times for it to wake up", attempt + 1);
                 healthy = true;
                 break;
             }
-            Ok(res) => crate::dlog!("meili  said yo mama is fat, and also {} on my not a poke number {}", res.status(), attempt + 1),
-            Err(_) => crate::dlog!("/health not answerin on poke with my javelin that i didnt do, {}, not ready yet", attempt + 1),
+            Ok(res) => crate::vlog!("meili  said yo mama is fat, and also {} on my not a poke number {}", res.status(), attempt + 1),
+            Err(_) => crate::vlog!("/health not answerin on poke with my javelin that i didnt do, {}, not ready yet", attempt + 1),
         }
         tokio::time::sleep(Duration::from_millis(500)).await;
     }
@@ -125,12 +124,12 @@ pub async fn setup_woooo() -> anyhow::Result<Client> {
     };
 
     if doc_count > 0 {
-        crate::dlog!("[meili] index games already has {} docs, skippin re-indexin", doc_count);
+        crate::vlog!("[meili] index games already has {} docs, skippin re-indexin", doc_count);
     } else {
         let index = ms_client.index("games");
 
         let docs = extract().await?;
-        crate::dlog!("[meili] add_documents inputs: url={} index=\"games\" primary_key=\"id\" doc_count={} docs={:?}",
+        crate::vlog!("[meili] add_documents inputs: url={} index=\"games\" primary_key=\"id\" doc_count={} docs={:?}",
             MEILI_URL, docs.len(), docs);
 
         let outcome = index.add_documents(&docs, Some("id")).await;
@@ -145,7 +144,7 @@ pub async fn setup_woooo() -> anyhow::Result<Client> {
 }
 
 pub async fn search_meilisearch(client: &Client, query: &str) -> anyhow::Result<Vec<GAME>> {
-    crate::dlog!("[meili] search inputs: query={:?}", query);
+    crate::vlog!("[meili] search inputs: query={:?}", query);
     let index =client.index("games");
 
     let results = index
@@ -160,7 +159,7 @@ pub async fn search_meilisearch(client: &Client, query: &str) -> anyhow::Result<
         .map(|hit| hit.result)
         .collect();
 
-    crate::dlog!("[meili] search outputs: hit_count={} games={:?}", games.len(), games);
+    crate::vlog!("[meili] search outputs: hit_count={} games={:?}", games.len(), games);
 
     Ok(games)
 }

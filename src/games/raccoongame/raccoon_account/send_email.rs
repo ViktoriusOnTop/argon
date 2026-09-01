@@ -10,7 +10,7 @@ pub async fn send_email(email: String, sn: String) -> anyhow::Result<()> {
         .build()?;
     let mut last_status = String::from("no response");
     for attempt in 0..3 {
-        crate::dlog!("[send_email] inputs: url=https://www.raccoongame.com/users/sendEmail attempt={}/3 email={} type=register sn={}", attempt + 1, email, sn);
+        crate::vlog!("[send_email] inputs: url=https://www.raccoongame.com/users/sendEmail attempt={}/3 email={} type=register sn={}", attempt + 1, email, sn);
         let mut headers = HeaderMap::new();
         headers.insert("accept", HeaderValue::from_static("application/json, text/javascript, */*; q=0.01"));
         headers.insert("accept-language", HeaderValue::from_static("en-US,en;q=0.9"));
@@ -45,20 +45,20 @@ pub async fn send_email(email: String, sn: String) -> anyhow::Result<()> {
             .send()
             .await;
         match &response {
-            Ok(res) => crate::dlog!("[send_email] output: http status={}", res.status()),
-            Err(e) => crate::dlog!("[send_email] output: reqwest errored: {}", e),
+            Ok(res) => crate::vlog!("[send_email] output: http status={}", res.status()),
+            Err(e) => crate::vlog!("[send_email] output: reqwest errored: {}", e),
         }
 
         if let Ok(res) = response {
             last_status = res.status().to_string();
             match res.json::<Value>().await {
                 Ok(response_json) => {
-                    crate::dlog!("[send_email] output body: {}", response_json);
+                    crate::vlog!("[send_email] output body: {}", response_json);
                     if response_json["status"].as_i64() == Some(200) {
                         return Ok(());
                     }
                 }
-                Err(e) => crate::dlog!("[send_email] json parse falled: {}", e),
+                Err(e) => crate::vlog!("[send_email] json parse falled: {}", e),
             }
         }
 
