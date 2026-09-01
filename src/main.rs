@@ -64,6 +64,7 @@ async fn main() {
     "#;
     println!("welcome to");
     println!("{}", argon);
+    println!("🥶🔥👌");
     println!("if something breaks or doesnt work then PLEASE PLEASE PLEASE make an issue https://github.com/ViktoriusOnTop/argon/issues or a PR if your a rustacean");
 
     if args.no_server {

@@ -11,7 +11,7 @@ pub struct InfoResponse {
 
 pub async fn get_info() -> Json<InfoResponse> {
     let info = InfoResponse {
-        version: "0.1.5".to_string(),
+        version: "0.2.0".to_string(),
         features: vec![
             "Mail endpoints work".to_string(),
             "Raccoon registration".to_string(),
