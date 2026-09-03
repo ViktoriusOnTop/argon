@@ -18,7 +18,7 @@ pub async fn get_rtcs(
     ws_token: &str,
     sn: &str,
     gl_key: &str,
-    sc_id: &str,
+    sc_id: Value,
     play_config: Value,
     offer_sdp: &str,
 ) -> anyhow::Result<Rtcs> {

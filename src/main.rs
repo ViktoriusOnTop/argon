@@ -15,6 +15,7 @@ use crate::api::raccoon::queue_status::queue_status;
 use crate::api::raccoon::search::search;
 use crate::games::raccoongame::searching::meilisearch::setup_woooo;
 use crate::games::raccoongame::pool::handler::POOL;
+use crate::logs::write::raccoon::database::accountdb::db::account_db;
 
 pub mod games;
 pub mod logs;
@@ -50,6 +51,25 @@ pub fn get_pool() -> OnceCell<POOL> {
     ACCOUNT_POOL.clone()
 }
 
+fn start_sweeper() {
+    tokio::spawn(async move {
+        if let Ok(db) = account_db() {
+            db.sweep_stale();
+        }
+        loop {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            let midnight = now + 86_400 - (now % 86_400);
+            tokio::time::sleep(std::time::Duration::from_secs(midnight.saturating_sub(now))).await;
+            if let Ok(db) = account_db() {
+                db.sweep_stale();
+            }
+        }
+    });
+}
+
 
 #[tokio::main]
 async fn main() {
@@ -81,6 +101,8 @@ async fn main() {
     }
 
     let _ = ACCOUNT_POOL.get_or_init(|| async { POOL::new().await }).await;
+
+    start_sweeper();
 
     if !args.no_docker {
         if is_docker_cli_installed() {
@@ -191,7 +213,13 @@ async fn setup_axum(){
     let app = Router::new()
         .merge(raccoon_app);
 
-    let listener = TcpListener::bind("0.0.0.0:1818").await.unwrap(); //argon's atomic number is 18, clever ik
+    let listener = match TcpListener::bind("0.0.0.0:1818").await {
+        Ok(l) => l,
+        Err(_) => {
+            println!("smth is stealing my port :<");
+            return;
+        }
+    };
 
     println!("done or dumb");
     axum::serve(listener, app.into_make_service_with_connect_info::<std::net::SocketAddr>()).await.expect("app start failed, is viktoriusontop stupid? :(");

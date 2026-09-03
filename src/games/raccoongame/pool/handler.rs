@@ -87,6 +87,13 @@ impl POOL {
     pub async fn stock_len(&self) -> usize {
         self.state.accounts.lock().await.len()
     }
+
+    pub async fn restore(&self, account: ACCOUNT) {
+        let mut stock = self.state.accounts.lock().await;
+        stock.push_front(account);
+        drop(stock);
+        self.state.notify.notify_waiters();
+    }
 }
 
 async fn worker_loop(state: Arc<Shared>) {
@@ -120,7 +127,7 @@ async fn worker_loop(state: Arc<Shared>) {
         match result {
             Ok((token, sn, email, password)) => {
                 consecutive_fails = 0;
-                let public_id = accountdb::new_public_id();
+                let public_id = accountdb::new_public_id(&sn, &token);
                 let account = ACCOUNT::new(token.clone(), sn.clone(), email.clone(), password.clone(), public_id.clone());
                 let record = DB_ACCOUNT { sn, token, email, password, public_id };
                 match accountdb::account_db() {

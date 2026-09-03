@@ -25,6 +25,12 @@ pub async fn play(Json(req): Json<PlayRequest>) -> Result<Json<PlayResponse>, (S
 
     let db = account_db().map_err(|_| (StatusCode::SERVICE_UNAVAILABLE, [(header::RETRY_AFTER, "30")]))?;
 
+    let probed = db.games_count().unwrap_or(0) > 0;
+    if probed && !db.is_playable(&req.game_key).map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, [(header::RETRY_AFTER, "30")]))? {
+        crate::vlog!("[play] blocked: public_id={} game_key={} not in playable catalog", req.public_id, req.game_key);
+        return Err((StatusCode::FORBIDDEN, [(header::RETRY_AFTER, "30")]));
+    }
+
     let Some(active) = db.active(&req.public_id).map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, [(header::RETRY_AFTER, "30")]))? else {
         return Err((StatusCode::NOT_FOUND, [(header::RETRY_AFTER, "30")]));
     };
@@ -38,7 +44,7 @@ pub async fn play(Json(req): Json<PlayRequest>) -> Result<Json<PlayResponse>, (S
             Ok(Json(PlayResponse { status: "ready".to_string(), position: 0, answer: rtcs.answer, candidates: rtcs.candidates }))
         }
         Ok(crate::games::raccoongame::play::full_gameplay::PlayStart::Queued { queue_id, position }) => {
-            let session = PlaySession { game_key: req.game_key.clone(), offer_sdp: req.offer_sdp.clone(), queue_id };
+            let session = PlaySession { game_key: req.game_key.clone(), offer_sdp: req.offer_sdp.clone(), queue_id, created_at: 0 };
             if let Err(e) = db.put_session(&req.public_id, &session) {
                 eprintln!("put_session falled for {}: {}", req.public_id, e);
             }

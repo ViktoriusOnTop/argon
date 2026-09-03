@@ -11,16 +11,16 @@ pub struct ACCOUNT {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PublicAccount {
-    pub email: String,
-    pub password: String,
+    pub public_id: String,
+}
+
+pub struct AccountThatsPublic {
     pub public_id: String,
 }
 
 impl From<&ACCOUNT> for PublicAccount {
     fn from(a: &ACCOUNT) -> Self {
         Self {
-            email: a.email.clone(),
-            password: a.password.clone(),
             public_id: a.public_id.clone(),
         }
     }

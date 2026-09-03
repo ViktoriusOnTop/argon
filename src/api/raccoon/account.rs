@@ -1,5 +1,3 @@
-// GET /api/raccoon/account
-
 use axum::http::{header, HeaderName, StatusCode};
 use axum::Json;
 use crate::get_pool;
@@ -14,10 +12,17 @@ pub async fn get_account() -> Result<Json<PublicAccount>, (StatusCode, [(HeaderN
         .ok_or((StatusCode::SERVICE_UNAVAILABLE, [(header::RETRY_AFTER, "30")]))?;
 
     let Some(public_id) = account.public_id().map(str::to_string) else {
+        pool.restore(account).await;
         return Err((StatusCode::SERVICE_UNAVAILABLE, [(header::RETRY_AFTER, "30")]));
     };
 
-    let db = account_db().map_err(|_| (StatusCode::SERVICE_UNAVAILABLE, [(header::RETRY_AFTER, "30")]))?;
+    let db = match account_db() {
+        Ok(db) => db,
+        Err(_) => {
+            pool.restore(account).await;
+            return Err((StatusCode::SERVICE_UNAVAILABLE, [(header::RETRY_AFTER, "30")]));
+        }
+    };
 
     crate::vlog!("[get_account] inputs: public_id={}", public_id);
 
@@ -26,8 +31,12 @@ pub async fn get_account() -> Result<Json<PublicAccount>, (StatusCode, [(HeaderN
             crate::vlog!("[get_account] output: public_id={}", public.public_id);
             Ok(Json(public))
         }
-        Ok(None) => Err((StatusCode::SERVICE_UNAVAILABLE, [(header::RETRY_AFTER, "30")])),
+        Ok(None) => {
+            pool.restore(account).await;
+            Err((StatusCode::SERVICE_UNAVAILABLE, [(header::RETRY_AFTER, "30")]))
+        }
         Err(e) => {
+            pool.restore(account).await;
             eprintln!("pop_account falled for {}: {}", public_id, e);
             Err((StatusCode::SERVICE_UNAVAILABLE, [(header::RETRY_AFTER, "30")]))
         }
